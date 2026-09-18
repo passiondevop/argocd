@@ -8,7 +8,7 @@ spec:
   project: default
 
   source:
-    repoURL: https://github.com/YOUR_GITHUB_USERNAME/eks-argocd-demo.git
+    repoURL: https://github.com/passiondevop/argocd.git
     targetRevision: main
     path: canary
 
