@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stagens
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-stable
+  namespace: stagens
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  selector:
+    app: nginx
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-canary
+  namespace: stagens
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  selector:
+    app: nginx
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: nginx-rollout
+  namespace: stagens
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 5
+
+  selector:
+    matchLabels:
+      app: nginx
+
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.25
+          ports:
+            - containerPort: 80
+
+  strategy:
+    canary:
+      stableService: nginx-stable
+      canaryService: nginx-canary
+
+      steps:
+        - setWeight: 20
+
+        - pause:
+            duration: 30s
+
+        - setWeight: 50
+
+        - pause: {}
+
+        - setWeight: 100
