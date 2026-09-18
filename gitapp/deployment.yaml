@@ -1,78 +1,27 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: devprojectns
----
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: webapp
-  namespace: devprojectns
-  labels:
-    app: web
-    env: dev
+  name: nginx-rollout
 spec:
-  replicas: 2
-  revisionHistoryLimit: 3
+  replicas: 3
+
   selector:
     matchLabels:
-      app: web
+      app: nginx
+
   template:
     metadata:
       labels:
-        app: web
-        env: dev
+        app: nginx
     spec:
       containers:
-        - name: webcon
-          image: simplebyte/simplybyte-calculator:latest  # bump this tag to trigger a new rollout
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 80
-              name: apache
-              protocol: TCP
-          resources:
-            requests:
-              memory: "200Mi"
-              cpu: "200m"
-            limits:
-              memory: "300Mi"
-              cpu: "400m"
+      - name: nginx
+        image: nginx:1.25
+        ports:
+        - containerPort: 80
+
   strategy:
     blueGreen:
-      activeService: websvc          # receives live/production traffic
-      previewService: websvc-preview # lets you test the new version before cutover
-      autoPromotionEnabled: false    # require manual approval to go live
-      scaleDownDelaySeconds: 30      # keep old version alive briefly after cutover, for fast rollback
----
-# Active service - what users/production hit
-apiVersion: v1
-kind: Service
-metadata:
-  name: websvc
-  namespace: devprojectns
-spec:
-  type: LoadBalancer
-  ports:
-    - name: apache
-      port: 80
-      targetPort: 80
-      protocol: TCP
-  selector:
-    app: web
----
-# Preview service - points at the new version before it's promoted
-apiVersion: v1
-kind: Service
-metadata:
-  name: websvc-preview
-  namespace: devprojectns
-spec:
-  type: ClusterIP
-  ports:
-    - name: apache
-      port: 80
-      targetPort: 80
-      protocol: TCP
-  selector:
-    app: web
+      activeService: nginx-stable
+      previewService: nginx-preview
+      autoPromotionEnabled: false
