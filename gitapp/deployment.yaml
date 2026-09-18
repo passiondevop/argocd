@@ -3,30 +3,29 @@ kind: Namespace
 metadata:
   name: devprojectns
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: webapp
   namespace: devprojectns
-  labels:  # to map it with the service
+  labels:
     app: web
     env: dev
 spec:
   replicas: 2
+  revisionHistoryLimit: 3
   selector:
     matchLabels:
       app: web
-      env: dev
   template:
     metadata:
-      name: webapp
       labels:
         app: web
         env: dev
     spec:
       containers:
         - name: webcon
-          image: sudarshanlnx/farmfresh:v1
+          image: simplebyte/simplybyte-calculator:latest  # bump this tag to trigger a new rollout
           imagePullPolicy: Always
           ports:
             - containerPort: 80
@@ -39,19 +38,41 @@ spec:
             limits:
               memory: "300Mi"
               cpu: "400m"
+  strategy:
+    blueGreen:
+      activeService: websvc          # receives live/production traffic
+      previewService: websvc-preview # lets you test the new version before cutover
+      autoPromotionEnabled: false    # require manual approval to go live
+      scaleDownDelaySeconds: 30      # keep old version alive briefly after cutover, for fast rollback
 ---
+# Active service - what users/production hit
 apiVersion: v1
 kind: Service
 metadata:
-  name: websvc   # service name (it can be any name)
+  name: websvc
   namespace: devprojectns
 spec:
   type: LoadBalancer
   ports:
     - name: apache
-      port: 80          # service port
-      targetPort: 80    # container port
+      port: 80
+      targetPort: 80
       protocol: TCP
-  selector:     # mapping to pod
+  selector:
     app: web
-    env: dev
+---
+# Preview service - points at the new version before it's promoted
+apiVersion: v1
+kind: Service
+metadata:
+  name: websvc-preview
+  namespace: devprojectns
+spec:
+  type: ClusterIP
+  ports:
+    - name: apache
+      port: 80
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: web
