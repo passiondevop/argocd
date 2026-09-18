@@ -78,7 +78,7 @@ spec:
   source:
     repoURL: https://github.com/passiondevop/argocd.git
     targetRevision: main
-    path: blue-green
+    path: bluegreen
 
   destination:
     server: https://kubernetes.default.svc
