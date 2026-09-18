@@ -1,33 +1,45 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Namespace
+metadata: 
+  name: devprojectns
+---
+apiVersion: v1
+kind: Pod
 metadata:
-  name: calculator-app
-  labels:
-    app: calculator-app
+ name: webapp
+ namespace: devprojectns
+ labels:  #to map it with the service
+  app: web
+  env: dev
 spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: calculator-app
-  template:
-    metadata:
-      labels:
-        app: calculator-app
-    spec:
-      containers:
-        - name: calculator-app
-          image: <YOUR_DOCKERHUB_USERNAME>/calculator-app:latest
-          ports:
-            - containerPort: 5000
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: 5000
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 5000
-            initialDelaySeconds: 10
-            periodSeconds: 20
+  containers:
+  - name: webcon
+    image: sudarshanlnx/farmfresh:v1
+    imagePullPolicy: Always
+    ports:
+    - containerPort: 80
+      name: apache
+      protocol: TCP
+    resources:
+          requests:
+            memory: "200Mi"
+            cpu: "200m"
+          limits:
+            memory: "300Mi"
+            cpu: "400m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+ name: websvc   #service name (it can be any name)
+ namespace: devprojectns
+spec:
+ type: LoadBalancer
+ ports:
+ - name: apache
+   port: 80 #service port
+   targetPort: 80 #container port
+   protocol: TCP
+ selector:     #mapping to pod
+   app: web
+   env: dev
