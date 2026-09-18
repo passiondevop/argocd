@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stagens
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-stable
+  namespace: stagens
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  selector:
+    app: nginx
+  ports:
+    - port: 80
+      targetPort: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-preview
+  namespace: stagens
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  selector:
+    app: nginx
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: nginx-rollout
+  namespace: stagens
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 3
+
+  selector:
+    matchLabels:
+      app: nginx
+
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.25
+          ports:
+            - containerPort: 80
+
+  strategy:
+    blueGreen:
+      activeService: nginx-stable
+      previewService: nginx-preview
+      autoPromotionEnabled: false
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bluegreen-app
+  namespace: argocd
+
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/passiondevop/argocd.git
+    targetRevision: main
+    path: blue-green
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: stagens
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true
