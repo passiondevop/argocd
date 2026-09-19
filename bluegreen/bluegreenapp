@@ -1,51 +1,64 @@
 apiVersion: v1
-kind: Service
+kind: Namespace
 metadata:
-  name: echo-stable
-  namespace: stagens
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
-spec:
-  selector:
-    app: echo-app
-  ports:
-    - port: 80
-      targetPort: 5678
-
+  name: devprojectns
 ---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: kuard
+  namespace: devprojectns
+  labels:
+    app: kuard
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: kuard
+  template:
+    metadata:
+      labels:
+        app: kuard
+    spec:
+      containers:
+        - name: kuard
+          image: gcr.io/kuar-demo/kuard-amd64:blue   # change to :green to trigger blue-green rollout
+          ports:
+            - containerPort: 8080
+  strategy:
+    blueGreen:
+      activeService: kuardsvc
+      previewService: kuardsvc-preview
+      autoPromotionEnabled: false
+      scaleDownDelaySeconds: 30
+---
+# ACTIVE (production) - browser: http://<node-external-ip>:30080
 apiVersion: v1
 kind: Service
 metadata:
-  name: echo-preview
-  namespace: stagens
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
+  name: kuardsvc
+  namespace: devprojectns
 spec:
-  selector:
-    app: echo-app
+  type: NodePort
   ports:
     - port: 80
-      targetPort: 5678
-
+      targetPort: 8080
+      nodePort: 30080
+  selector:
+    app: kuard
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+# PREVIEW (test before promoting) - browser: http://<node-external-ip>:30081
+apiVersion: v1
+kind: Service
 metadata:
-  name: echo-ingress
-  namespace: stagens
-  annotations:
-    kubernetes.io/ingress.class: alb
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
+  name: kuardsvc-preview
+  namespace: devprojectns
 spec:
-  ingressClassName: alb
-  rules:
-    - http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: echo-stable
-                port:
-                  number: 80
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 8080
+      nodePort: 30081
+  selector:
+    app: kuard
