@@ -33,7 +33,7 @@ spec:
       autoPromotionEnabled: false
       scaleDownDelaySeconds: 30
 ---
-# ACTIVE (production) - browser: http://<node-external-ip>:30080
+# ACTIVE
 apiVersion: v1
 kind: Service
 metadata:
@@ -44,11 +44,11 @@ spec:
   ports:
     - port: 80
       targetPort: 8080
-      nodePort: 30080
+      nodePort: 30090   # changed from 30080
   selector:
     app: kuard
 ---
-# PREVIEW (test before promoting) - browser: http://<node-external-ip>:30081
+# PREVIEW
 apiVersion: v1
 kind: Service
 metadata:
@@ -59,6 +59,6 @@ spec:
   ports:
     - port: 80
       targetPort: 8080
-      nodePort: 30081
+      nodePort: 30091   # changed from 30081
   selector:
     app: kuard
