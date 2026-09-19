@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: kuard
-          image: simplebyte/simplybyte-calculator:latest  # change to :green to trigger blue-green rollout
+          image: simplebyte/simplybyte-calculator:1.0  # change to :green to trigger blue-green rollout
           ports:
             - containerPort: 8080
   strategy:
